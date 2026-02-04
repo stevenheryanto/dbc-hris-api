@@ -1,0 +1,40 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dbc-hris-api
+    environment:
+      # Database connection to external postgres container
+      DATABASE_URL: postgres://myuser:mypass@db_postgres_dbc:5432/dbc_hris
+      DB_HOST: db_postgres_dbc
+      DB_PORT: 5432
+      DB_NAME: dbc_hris
+      DB_USER: myuser
+      DB_PASSWORD: mypass
+      DB_SSL: "false"
+      DB_MAX_CONNECTIONS: 20
+      DB_CONNECTION_TIMEOUT: 30000
+      JWT_SECRET: your-secret-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      UPLOAD_PATH: ./uploads
+      UPLOAD_MAX_SIZE: 10485760
+      UPLOAD_ALLOWED_TYPES: image/jpeg,image/png,image/jpg
+      PORT: 8080
+      HOST: 0.0.0.0
+      CORS_ORIGIN: http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173,http://10.0.2.2:8080
+      CORS_CREDENTIALS: "true"
+      APP_NAME: DBC HRIS API
+      APP_VERSION: 1.0.0
+      NODE_ENV: production
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/usr/src/app/uploads
+    networks:
+      - dbc-hris-database_default
+    restart: unless-stopped
+
+networks:
+  dbc-hris-database_default:
+    external: true
