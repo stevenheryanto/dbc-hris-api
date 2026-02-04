@@ -7,7 +7,7 @@ import { config } from '../config'
 
 export class AttendanceService {
   static async createAttendance(data: {
-    employeeId: number
+    userId: number // Changed from employeeId to userId
     checkInLat: number
     checkInLng: number
     checkInAddress?: string
@@ -22,7 +22,7 @@ export class AttendanceService {
       : new Date()
 
     const [attendance] = await db.insert(attendances).values({
-      employeeId: data.employeeId,
+      userId: data.userId, // Changed from employeeId to userId
       checkInTime,
       checkInLat: data.checkInLat.toString(),
       checkInLng: data.checkInLng.toString(),
@@ -66,7 +66,7 @@ export class AttendanceService {
     return db.query.attendances.findFirst({
       where: eq(attendances.id, attendanceId),
       with: {
-        employee: true,
+        user: true, // Changed from employee to user
         photos: true
       }
     })
@@ -74,7 +74,7 @@ export class AttendanceService {
 
   static async getUserAttendanceHistory(userId: number, limit: number = 30) {
     return db.query.attendances.findMany({
-      where: eq(attendances.employeeId, userId),
+      where: eq(attendances.userId, userId), // Changed from employeeId to userId
       orderBy: [desc(attendances.checkInTime)],
       limit,
       with: {
@@ -92,7 +92,7 @@ export class AttendanceService {
 
     return db.query.attendances.findMany({
       where: and(
-        eq(attendances.employeeId, userId),
+        eq(attendances.userId, userId), // Changed from employeeId to userId
         gte(attendances.checkInTime, startOfDay),
         lte(attendances.checkInTime, endOfDay)
       ),
@@ -106,7 +106,7 @@ export class AttendanceService {
   static async getOfflineSubmissions(userId: number) {
     return db.query.attendances.findMany({
       where: and(
-        eq(attendances.employeeId, userId),
+        eq(attendances.userId, userId), // Changed from employeeId to userId
         eq(attendances.isOfflineSubmission, true)
       ),
       orderBy: [desc(attendances.offlineTimestamp)],
@@ -121,7 +121,7 @@ export class AttendanceService {
       where: eq(attendances.status, 'pending'),
       orderBy: [desc(attendances.createdAt)],
       with: {
-        employee: true,
+        user: true, // Changed from employee to user
         photos: true
       }
     })
@@ -149,7 +149,7 @@ export class AttendanceService {
       ),
       orderBy: [desc(attendances.createdAt)],
       with: {
-        employee: true,
+        user: true, // Changed from employee to user
         photos: true
       }
     })

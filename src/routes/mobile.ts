@@ -61,7 +61,9 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
         bssid = body.bssid as string | undefined
         cellId = body.cellId as string | undefined
         submissionType = body.submissionType as string | undefined
-        isOfflineSubmission = body.isOfflineSubmission
+        
+        // Handle boolean conversion for multipart form data
+        isOfflineSubmission = body.isOfflineSubmission === 'true' || body.isOfflineSubmission === true
         
         // Parse offline timestamp if provided
         if (body.offlineTimestamp) {
@@ -88,30 +90,20 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
         return { error: 'Invalid latitude or longitude' }
       }
 
+      // Log sync requests for debugging
+      if (isOfflineSubmission) {
+        console.log(`📱 Mobile sync request: ${submissionType} at ${offlineTimestamp?.toISOString()} from user ${user.userId}`)
+      }
+
       // Validate offline timestamp if provided
       if (offlineTimestamp && isNaN(offlineTimestamp.getTime())) {
         set.status = 422
         return { error: 'Invalid offline timestamp' }
       }
 
-      // Get user's employee_id from database
-      const { db } = await import('../db')
-      const { users } = await import('../db/schema')
-      const { eq } = await import('drizzle-orm')
-      
-      const userRecord = await db.query.users.findFirst({
-        where: eq(users.id, user.userId),
-        columns: { employeeId: true }
-      })
-
-      if (!userRecord?.employeeId) {
-        set.status = 400
-        return { error: 'User is not associated with an employee record' }
-      }
-
-      // Create attendance record
+      // Create attendance record using userId directly
       const attendance = await AttendanceService.createAttendance({
-        employeeId: userRecord.employeeId,
+        userId: user.userId, // Use userId directly instead of employeeId
         checkInLat,
         checkInLng,
         checkInAddress,
@@ -166,22 +158,8 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
     }
   })
   .get('/attendance/today', async ({ user }) => {
-    // Get user's employee_id from database
-    const { db } = await import('../db')
-    const { users } = await import('../db/schema')
-    const { eq } = await import('drizzle-orm')
-    
-    const userRecord = await db.query.users.findFirst({
-      where: eq(users.id, user.userId),
-      columns: { employeeId: true }
-    })
-
-    if (!userRecord?.employeeId) {
-      return { attendances: [] }
-    }
-
     const todayAttendances = await AttendanceService.getUserAttendanceByDate(
-      userRecord.employeeId, 
+      user.userId, // Use userId directly
       new Date()
     )
 
@@ -198,21 +176,7 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
     }
   })
   .get('/attendance/offline', async ({ user }) => {
-    // Get user's employee_id from database
-    const { db } = await import('../db')
-    const { users } = await import('../db/schema')
-    const { eq } = await import('drizzle-orm')
-    
-    const userRecord = await db.query.users.findFirst({
-      where: eq(users.id, user.userId),
-      columns: { employeeId: true }
-    })
-
-    if (!userRecord?.employeeId) {
-      return { attendances: [] }
-    }
-
-    const offlineAttendances = await AttendanceService.getOfflineSubmissions(userRecord.employeeId)
+    const offlineAttendances = await AttendanceService.getOfflineSubmissions(user.userId) // Use userId directly
 
     return {
       attendances: offlineAttendances,
@@ -228,21 +192,7 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
   .get('/attendance/history', async ({ query, user }) => {
     const limit = query.limit ? parseInt(query.limit) : 30
 
-    // Get user's employee_id from database
-    const { db } = await import('../db')
-    const { users } = await import('../db/schema')
-    const { eq } = await import('drizzle-orm')
-    
-    const userRecord = await db.query.users.findFirst({
-      where: eq(users.id, user.userId),
-      columns: { employeeId: true }
-    })
-
-    if (!userRecord?.employeeId) {
-      return { attendances: [] }
-    }
-
-    const userAttendances = await AttendanceService.getUserAttendanceHistory(userRecord.employeeId, limit)
+    const userAttendances = await AttendanceService.getUserAttendanceHistory(user.userId, limit) // Use userId directly
 
     return {
       attendances: userAttendances

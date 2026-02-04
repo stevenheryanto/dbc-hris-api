@@ -36,7 +36,7 @@ export const AttendanceSubmissionModel = t.Object({
     t.Literal('break_start'),
     t.Literal('break_end')
   ])),
-  isOfflineSubmission: t.Optional(t.Boolean()),
+  isOfflineSubmission: t.Optional(t.Union([t.Boolean(), t.String()])), // Accept both boolean and string for multipart
   offlineTimestamp: t.Optional(t.Union([t.String(), t.Date()])), // ISO string or Date object
   checkInPhoto: t.Optional(t.File()),
   checkOutPhoto: t.Optional(t.File())

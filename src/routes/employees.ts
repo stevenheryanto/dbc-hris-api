@@ -1,21 +1,24 @@
 import { Elysia, t } from 'elysia'
 import { authPlugin } from '../middleware/auth'
-import { db, employees } from '../db'
-import { eq } from 'drizzle-orm'
+import { db, users } from '../db'
+import { eq, desc } from 'drizzle-orm'
 
 export const employeesController = new Elysia({ prefix: '/employees' })
   .use(authPlugin)
   .get('/', async () => {
-    const allEmployees = await db.query.employees.findMany({
-      orderBy: (employees, { desc }) => [desc(employees.createdAt)]
+    const allUsers = await db.query.users.findMany({
+      orderBy: [desc(users.createdAt)],
+      columns: {
+        password: false // Exclude password from response
+      }
     })
 
-    return allEmployees
+    return allUsers
   }, {
     detail: {
       tags: ['Employees'],
-      summary: 'Get all employees',
-      description: 'Get list of all employees'
+      summary: 'Get all users/employees',
+      description: 'Get list of all users/employees'
     }
   })
   .get('/:id', async ({ params, set }) => {

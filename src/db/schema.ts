@@ -1,11 +1,15 @@
 import { pgTable, bigserial, varchar, text, timestamp, boolean, decimal, bigint, index, uniqueIndex } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
-export const employees = pgTable('employee', {
+export const users = pgTable('users', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
-  employeeId: varchar('employee_id', { length: 50 }).notNull().unique(),
-  userAccount: varchar('user_account', { length: 50 }),
-  fullname: varchar('fullname', { length: 191 }),
+  username: varchar('username', { length: 50 }).notNull().unique(),
+  email: varchar('email', { length: 100 }).unique(),
+  name: varchar('name', { length: 100 }),
+  password: varchar('password', { length: 255 }).notNull(),
+  role: varchar('role', { length: 20 }).default('user'),
+  // Employee fields moved to user table
+  employeeId: varchar('employee_id', { length: 50 }).unique(),
   employeeCode: varchar('employee_code', { length: 50 }),
   status: varchar('status', { length: 1 }).notNull().default('A'),
   startActiveDate: timestamp('start_active_date'),
@@ -14,29 +18,17 @@ export const employees = pgTable('employee', {
   type: varchar('type', { length: 50 }),
   source: varchar('source', { length: 191 }),
   country: varchar('country', { length: 3 }),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
-}, (table) => ({
-  statusActiveIdx: index('idx_employee_status_active_date').on(table.status, table.startActiveDate),
-  locationIdx: index('idx_employee_location').on(table.areaCode)
-}))
-
-export const users = pgTable('users', {
-  id: bigserial('id', { mode: 'number' }).primaryKey(),
-  username: varchar('username', { length: 50 }).notNull().unique(),
-  email: varchar('email', { length: 100 }).unique(),
-  name: varchar('name', { length: 100 }),
-  password: varchar('password', { length: 255 }).notNull(),
-  role: varchar('role', { length: 20 }).default('user'),
-  employeeId: bigint('employee_id', { mode: 'number' }).references(() => employees.id),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
-})
+}, (table) => ({
+  statusActiveIdx: index('idx_users_status_active_date').on(table.status, table.startActiveDate),
+  locationIdx: index('idx_users_location').on(table.areaCode)
+}))
 
 export const attendances = pgTable('attendances', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
-  employeeId: bigint('employee_id', { mode: 'number' }).notNull().references(() => employees.id),
+  userId: bigint('user_id', { mode: 'number' }).notNull().references(() => users.id), // Changed from employeeId to userId
   checkInTime: timestamp('check_in_time').notNull(),
   checkInLat: decimal('check_in_lat', { precision: 10, scale: 8 }),
   checkInLng: decimal('check_in_lng', { precision: 11, scale: 8 }),
@@ -55,9 +47,9 @@ export const attendances = pgTable('attendances', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 }, (table) => ({
-  employeeIdx: index('idx_attendances_employee').on(table.employeeId),
+  userIdx: index('idx_attendances_user').on(table.userId), // Changed from employeeIdx
   statusCreatedIdx: index('idx_attendances_status_created').on(table.status, table.createdAt),
-  employeeDateIdx: index('idx_attendances_employee_date').on(table.employeeId, table.checkInTime),
+  userDateIdx: index('idx_attendances_user_date').on(table.userId, table.checkInTime), // Changed from employeeDateIdx
   offlineIdx: index('idx_attendances_offline').on(table.isOfflineSubmission, table.offlineTimestamp)
 }))
 
@@ -78,25 +70,14 @@ export const attendancePhotos = pgTable('attendance_photos', {
 }))
 
 // Relations
-export const employeesRelations = relations(employees, ({ many, one }) => ({
-  user: one(users, {
-    fields: [employees.id],
-    references: [users.employeeId]
-  }),
+export const usersRelations = relations(users, ({ many }) => ({
   attendances: many(attendances)
 }))
 
-export const usersRelations = relations(users, ({ one }) => ({
-  employee: one(employees, {
-    fields: [users.employeeId],
-    references: [employees.id]
-  })
-}))
-
 export const attendancesRelations = relations(attendances, ({ one, many }) => ({
-  employee: one(employees, {
-    fields: [attendances.employeeId],
-    references: [employees.id]
+  user: one(users, {
+    fields: [attendances.userId],
+    references: [users.id]
   }),
   photos: many(attendancePhotos)
 }))
@@ -108,8 +89,6 @@ export const attendancePhotosRelations = relations(attendancePhotos, ({ one }) =
   })
 }))
 
-export type Employee = typeof employees.$inferSelect
-export type NewEmployee = typeof employees.$inferInsert
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
 export type Attendance = typeof attendances.$inferSelect
