@@ -1,13 +1,39 @@
 import { Elysia, t } from 'elysia'
 import { authPlugin } from '../middleware/auth'
 import { db, users } from '../db'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, like, and, or } from 'drizzle-orm'
+import { AuthService } from '../services/auth.service'
 
 export const employeesController = new Elysia({ prefix: '/employees' })
   .use(authPlugin)
-  .get('/', async () => {
+  .get('/', async ({ query }) => {
+    const { search, status, limit = '50', offset = '0' } = query
+    
+    let whereConditions = []
+    
+    if (search) {
+      whereConditions.push(
+        or(
+          like(users.name, `%${search}%`),
+          like(users.username, `%${search}%`),
+          like(users.email, `%${search}%`),
+          like(users.employeeId, `%${search}%`),
+          like(users.employeeCode, `%${search}%`)
+        )
+      )
+    }
+    
+    if (status) {
+      whereConditions.push(eq(users.status, status))
+    }
+    
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined
+    
     const allUsers = await db.query.users.findMany({
+      where: whereClause,
       orderBy: [desc(users.createdAt)],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       columns: {
         password: false // Exclude password from response
       }
@@ -18,25 +44,28 @@ export const employeesController = new Elysia({ prefix: '/employees' })
     detail: {
       tags: ['Employees'],
       summary: 'Get all users/employees',
-      description: 'Get list of all users/employees'
+      description: 'Get list of all users/employees with optional search and filtering'
     }
   })
   .get('/:id', async ({ params, set }) => {
     try {
       const id = parseInt(params.id)
-      const employee = await db.query.employees.findFirst({
-        where: eq(employees.id, id)
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, id),
+        columns: {
+          password: false // Exclude password from response
+        }
       })
 
-      if (!employee) {
+      if (!user) {
         set.status = 404
-        return { error: 'Employee not found' }
+        return { error: 'User not found' }
       }
 
-      return employee
+      return user
     } catch (error) {
       set.status = 500
-      return { error: 'Failed to get employee' }
+      return { error: 'Failed to get user' }
     }
   }, {
     params: t.Object({
@@ -44,15 +73,22 @@ export const employeesController = new Elysia({ prefix: '/employees' })
     }),
     detail: {
       tags: ['Employees'],
-      summary: 'Get employee by ID',
-      description: 'Get a specific employee by ID'
+      summary: 'Get user by ID',
+      description: 'Get a specific user by ID'
     }
   })
   .post('/', async ({ body, set }) => {
     try {
-      const [newEmployee] = await db.insert(employees).values({
+      // Hash password before storing
+      const hashedPassword = await AuthService.hashPassword(body.password)
+      
+      const [newUser] = await db.insert(users).values({
+        username: body.username,
+        email: body.email,
+        name: body.name,
+        password: hashedPassword,
+        role: body.role || 'employee',
         employeeId: body.employeeId,
-        fullname: body.fullname,
         employeeCode: body.employeeCode,
         status: body.status || 'A',
         startActiveDate: body.startActiveDate ? new Date(body.startActiveDate) : new Date(),
@@ -61,20 +97,43 @@ export const employeesController = new Elysia({ prefix: '/employees' })
         type: body.type,
         source: body.source,
         country: body.country || 'ID',
+        isActive: body.isActive !== undefined ? body.isActive : true,
         createdAt: new Date(),
         updatedAt: new Date()
-      }).returning()
+      }).returning({
+        id: users.id,
+        username: users.username,
+        email: users.email,
+        name: users.name,
+        role: users.role,
+        employeeId: users.employeeId,
+        employeeCode: users.employeeCode,
+        status: users.status,
+        startActiveDate: users.startActiveDate,
+        areaCode: users.areaCode,
+        territoryCode: users.territoryCode,
+        type: users.type,
+        source: users.source,
+        country: users.country,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt
+      })
 
       set.status = 201
-      return newEmployee
+      return newUser
     } catch (error) {
       set.status = 500
-      return { error: 'Failed to create employee' }
+      return { error: 'Failed to create user' }
     }
   }, {
     body: t.Object({
-      employeeId: t.String(),
-      fullname: t.String(),
+      username: t.String(),
+      email: t.String({ format: 'email' }),
+      name: t.String(),
+      password: t.String({ minLength: 6 }),
+      role: t.Optional(t.String()),
+      employeeId: t.Optional(t.String()),
       employeeCode: t.Optional(t.String()),
       status: t.Optional(t.String()),
       startActiveDate: t.Optional(t.String()),
@@ -82,52 +141,82 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       territoryCode: t.Optional(t.String()),
       type: t.Optional(t.String()),
       source: t.Optional(t.String()),
-      country: t.Optional(t.String())
+      country: t.Optional(t.String()),
+      isActive: t.Optional(t.Boolean())
     }),
     detail: {
       tags: ['Employees'],
-      summary: 'Create employee',
-      description: 'Create a new employee'
+      summary: 'Create user',
+      description: 'Create a new user/employee'
     }
   })
   .put('/:id', async ({ params, body, set }) => {
     try {
       const id = parseInt(params.id)
       
-      const [updatedEmployee] = await db.update(employees)
-        .set({
-          employeeId: body.employeeId,
-          fullname: body.fullname,
-          employeeCode: body.employeeCode,
-          status: body.status,
-          startActiveDate: body.startActiveDate ? new Date(body.startActiveDate) : undefined,
-          areaCode: body.areaCode,
-          territoryCode: body.territoryCode,
-          type: body.type,
-          source: body.source,
-          country: body.country,
-          updatedAt: new Date()
+      const updateData: any = {
+        updatedAt: new Date()
+      }
+      
+      // Only update fields that are provided
+      if (body.username) updateData.username = body.username
+      if (body.email) updateData.email = body.email
+      if (body.name) updateData.name = body.name
+      if (body.role) updateData.role = body.role
+      if (body.employeeId) updateData.employeeId = body.employeeId
+      if (body.employeeCode) updateData.employeeCode = body.employeeCode
+      if (body.status) updateData.status = body.status
+      if (body.startActiveDate) updateData.startActiveDate = new Date(body.startActiveDate)
+      if (body.areaCode) updateData.areaCode = body.areaCode
+      if (body.territoryCode) updateData.territoryCode = body.territoryCode
+      if (body.type) updateData.type = body.type
+      if (body.source) updateData.source = body.source
+      if (body.country) updateData.country = body.country
+      if (body.isActive !== undefined) updateData.isActive = body.isActive
+      
+      const [updatedUser] = await db.update(users)
+        .set(updateData)
+        .where(eq(users.id, id))
+        .returning({
+          id: users.id,
+          username: users.username,
+          email: users.email,
+          name: users.name,
+          role: users.role,
+          employeeId: users.employeeId,
+          employeeCode: users.employeeCode,
+          status: users.status,
+          startActiveDate: users.startActiveDate,
+          areaCode: users.areaCode,
+          territoryCode: users.territoryCode,
+          type: users.type,
+          source: users.source,
+          country: users.country,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt
         })
-        .where(eq(employees.id, id))
-        .returning()
 
-      if (!updatedEmployee) {
+      if (!updatedUser) {
         set.status = 404
-        return { error: 'Employee not found' }
+        return { error: 'User not found' }
       }
 
-      return updatedEmployee
+      return updatedUser
     } catch (error) {
       set.status = 500
-      return { error: 'Failed to update employee' }
+      return { error: 'Failed to update user' }
     }
   }, {
     params: t.Object({
       id: t.String({ pattern: '^[0-9]+$' })
     }),
     body: t.Object({
+      username: t.Optional(t.String()),
+      email: t.Optional(t.String({ format: 'email' })),
+      name: t.Optional(t.String()),
+      role: t.Optional(t.String()),
       employeeId: t.Optional(t.String()),
-      fullname: t.Optional(t.String()),
       employeeCode: t.Optional(t.String()),
       status: t.Optional(t.String()),
       startActiveDate: t.Optional(t.String()),
@@ -135,32 +224,33 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       territoryCode: t.Optional(t.String()),
       type: t.Optional(t.String()),
       source: t.Optional(t.String()),
-      country: t.Optional(t.String())
+      country: t.Optional(t.String()),
+      isActive: t.Optional(t.Boolean())
     }),
     detail: {
       tags: ['Employees'],
-      summary: 'Update employee',
-      description: 'Update an existing employee'
+      summary: 'Update user',
+      description: 'Update an existing user/employee'
     }
   })
   .delete('/:id', async ({ params, set }) => {
     try {
       const id = parseInt(params.id)
       
-      const deletedEmployee = await db.delete(employees)
-        .where(eq(employees.id, id))
+      const deletedUser = await db.delete(users)
+        .where(eq(users.id, id))
         .returning()
 
-      if (deletedEmployee.length === 0) {
+      if (deletedUser.length === 0) {
         set.status = 404
-        return { error: 'Employee not found' }
+        return { error: 'User not found' }
       }
 
       set.status = 204
       return
     } catch (error) {
       set.status = 500
-      return { error: 'Failed to delete employee' }
+      return { error: 'Failed to delete user' }
     }
   }, {
     params: t.Object({
@@ -168,35 +258,43 @@ export const employeesController = new Elysia({ prefix: '/employees' })
     }),
     detail: {
       tags: ['Employees'],
-      summary: 'Delete employee',
-      description: 'Delete an employee'
+      summary: 'Delete user',
+      description: 'Delete a user/employee'
     }
   })
   .post('/import', async ({ body, set }) => {
     try {
-      const { employees: employeeData } = body
+      const { users: userData } = body
       let successCount = 0
       const errors: string[] = []
 
-      for (const emp of employeeData) {
+      for (const user of userData) {
         try {
-          await db.insert(employees).values({
-            employeeId: emp.employeeId,
-            fullname: emp.fullname,
-            employeeCode: emp.employeeCode,
-            status: emp.status || 'A',
-            startActiveDate: emp.startActiveDate ? new Date(emp.startActiveDate) : new Date(),
-            areaCode: emp.areaCode,
-            territoryCode: emp.territoryCode,
-            type: emp.type,
-            source: emp.source || 'import',
-            country: emp.country || 'ID',
+          // Hash password before storing
+          const hashedPassword = await AuthService.hashPassword(user.password)
+          
+          await db.insert(users).values({
+            username: user.username,
+            email: user.email,
+            name: user.name,
+            password: hashedPassword,
+            role: user.role || 'employee',
+            employeeId: user.employeeId,
+            employeeCode: user.employeeCode,
+            status: user.status || 'A',
+            startActiveDate: user.startActiveDate ? new Date(user.startActiveDate) : new Date(),
+            areaCode: user.areaCode,
+            territoryCode: user.territoryCode,
+            type: user.type,
+            source: user.source || 'import',
+            country: user.country || 'ID',
+            isActive: user.isActive !== undefined ? user.isActive : true,
             createdAt: new Date(),
             updatedAt: new Date()
           })
           successCount++
         } catch (error) {
-          errors.push(`Failed to import employee ${emp.employeeId}: ${error}`)
+          errors.push(`Failed to import user ${user.username}: ${error}`)
         }
       }
 
@@ -206,13 +304,17 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       }
     } catch (error) {
       set.status = 500
-      return { error: 'Failed to import employees' }
+      return { error: 'Failed to import users' }
     }
   }, {
     body: t.Object({
-      employees: t.Array(t.Object({
-        employeeId: t.String(),
-        fullname: t.String(),
+      users: t.Array(t.Object({
+        username: t.String(),
+        email: t.String({ format: 'email' }),
+        name: t.String(),
+        password: t.String({ minLength: 6 }),
+        role: t.Optional(t.String()),
+        employeeId: t.Optional(t.String()),
         employeeCode: t.Optional(t.String()),
         status: t.Optional(t.String()),
         startActiveDate: t.Optional(t.String()),
@@ -220,12 +322,13 @@ export const employeesController = new Elysia({ prefix: '/employees' })
         territoryCode: t.Optional(t.String()),
         type: t.Optional(t.String()),
         source: t.Optional(t.String()),
-        country: t.Optional(t.String())
+        country: t.Optional(t.String()),
+        isActive: t.Optional(t.Boolean())
       }))
     }),
     detail: {
       tags: ['Employees'],
-      summary: 'Import employees',
-      description: 'Import multiple employees from CSV/JSON'
+      summary: 'Import users',
+      description: 'Import multiple users/employees from CSV/JSON'
     }
   })
