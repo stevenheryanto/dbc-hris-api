@@ -33,8 +33,8 @@ COPY --from=install /temp/prod/node_modules node_modules
 COPY --from=prerelease /usr/src/app/src ./src
 COPY --from=prerelease /usr/src/app/package.json .
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create uploads directory and set permissions  
+RUN mkdir -p uploads && chown -R bun:bun uploads
 
 # Run the app
 USER bun
