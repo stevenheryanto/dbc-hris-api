@@ -1,4 +1,4 @@
-import { pgTable, bigserial, varchar, text, timestamp, boolean, decimal, bigint, index, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, bigserial, varchar, text, timestamp, boolean, decimal, bigint, index, uniqueIndex, date, smallint } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
 export const users = pgTable('users', {
@@ -17,18 +17,19 @@ export const users = pgTable('users', {
   territoryCode: varchar('territory_code', { length: 50 }),
   type: varchar('type', { length: 50 }),
   source: varchar('source', { length: 191 }),
+  officeId: bigint('office_id', { mode: 'number' }).references(() => masterOffice.id),
   country: varchar('country', { length: 3 }),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 }, (table) => ({
-  statusActiveIdx: index('idx_users_status_active_date').on(table.status, table.startActiveDate),
-  locationIdx: index('idx_users_location').on(table.areaCode)
+  statusActiveIdx: index('idx_users_status_active_date').on(table.status, table.startActiveDate)
 }))
 
 export const attendances = pgTable('attendances', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   userId: bigint('user_id', { mode: 'number' }).notNull().references(() => users.id), // Changed from employeeId to userId
+  checkInDate: date('check_in_date').notNull().defaultNow(),
   checkInTime: timestamp('check_in_time').notNull(),
   checkInLat: decimal('check_in_lat', { precision: 10, scale: 8 }),
   checkInLng: decimal('check_in_lng', { precision: 11, scale: 8 }),
@@ -69,6 +70,32 @@ export const attendancePhotos = pgTable('attendance_photos', {
   deletedAtIdx: index('idx_attendance_photos_deleted_at').on(table.deletedAt)
 }))
 
+export const masterOffice = pgTable('master_office', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  officeName: varchar('office_name', { length: 255 }).notNull().unique(),
+  officeDescription: varchar('office_description', { length: 255 }).notNull(),
+  checkInLat: decimal('check_in_lat', { precision: 10, scale: 8 }),
+  checkInLng: decimal('check_in_lng', { precision: 11, scale: 8 }),
+  checkInAddress: varchar('check_in_address', { length: 255 }),
+  qrCode: text('qr_code'),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+
+export const userDevices = pgTable('user_devices', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  userId: bigint('user_id', { mode: 'number' }).notNull().references(() => users.id),
+  manufacturer: varchar('manufacturer', { length: 100 }),
+  model: varchar('model', { length: 100 }),
+  device: varchar('device', { length: 100 }),
+  product: varchar('product', { length: 100 }),
+  sdkInt: smallint('sdk_int').default(1),
+  androidVersion: varchar('android_version', { length: 32 }),
+  firstSeen: timestamp('first_seen').defaultNow(),
+  lastSeen: timestamp('last_seen').defaultNow()
+})  
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   attendances: many(attendances)
@@ -95,3 +122,5 @@ export type Attendance = typeof attendances.$inferSelect
 export type NewAttendance = typeof attendances.$inferInsert
 export type AttendancePhoto = typeof attendancePhotos.$inferSelect
 export type NewAttendancePhoto = typeof attendancePhotos.$inferInsert
+export type MasterOffice = typeof masterOffice.$inferSelect
+export type NewMasterOffice = typeof masterOffice.$inferInsert

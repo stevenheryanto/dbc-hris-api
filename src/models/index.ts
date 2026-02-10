@@ -1,4 +1,4 @@
-import { t } from 'elysia'
+import { status, t } from 'elysia'
 
 // Auth Models
 export const LoginModel = t.Object({
@@ -78,6 +78,44 @@ export const AttendanceModels = {
   review: ReviewRequestModel,
   reportsQuery: AttendanceReportsQueryModel,
   response: AttendanceResponseModel
+}
+
+export const MasterOfficeModels = {
+  officeName: t.String({ minLength: 1, maxLength: 255 }),
+  officeDescription: t.String({ minLength: 1, maxLength: 255 }),
+  checkInLat: t.Number({ minimum: -90, maximum: 90 }),
+  checkInLng: t.Number({ minimum: -180, maximum: 180 }),
+  checkInAddress: t.String({ maxLength: 255 }),
+  qrCode: t.String(),
+  status: t.String({ maxLength: 20 })
+}
+
+export const CreateOfficeModel = {
+  officeName: t.String({ minLength: 1, maxLength: 255 }),
+  officeDescription: t.String({ minLength: 1, maxLength: 255 }),
+  checkInLat: t.Number({ minimum: -90, maximum: 90 }),
+  checkInLng: t.Number({ minimum: -180, maximum: 180 }),
+  checkInAddress: t.Optional(t.String({ maxLength: 255 }))
+}
+
+export const UpdateOfficeModel = {
+  officeName: t.String({ minLength: 1, maxLength: 255 }),
+  officeDescription: t.String({ minLength: 1, maxLength: 255 }),
+  checkInLat: t.Number({ minimum: -90, maximum: 90 }),
+  checkInLng: t.Number({ minimum: -180, maximum: 180 }),
+  checkInAddress: t.Optional(t.String({ maxLength: 255 })),
+  qrCode: t.Optional(t.String())
+}
+
+export const UserDeviceModels = {
+  manufacturer: t.String({ maxLength: 100 }),
+  model: t.String({ maxLength: 100 }),
+  device: t.String({ maxLength: 100 }),
+  product: t.String({ maxLength: 100 }),
+  sdkInt: t.Number({ minimum: 1 }),
+  androidVersion: t.String({ maxLength: 32 }),
+  firstSeenAt: t.Date(),
+  lastSeenAt: t.Date()
 }
 
 export const CommonModels = {

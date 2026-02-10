@@ -7,6 +7,7 @@ import { mobileController } from './routes/mobile'
 import { adminController } from './routes/admin'
 import { employeesController } from './routes/employees'
 import { attendanceController } from './routes/attendance'
+import { officeController } from './routes/offices'
 import { config } from './config'
 import { initDatabase } from './db'
 
@@ -33,7 +34,8 @@ const app = new Elysia()
         { name: 'Mobile', description: 'Mobile app endpoints' },
         { name: 'Admin', description: 'Admin panel endpoints' },
         { name: 'Employees', description: 'Employee management endpoints' },
-        { name: 'Attendance', description: 'Attendance management endpoints' }
+        { name: 'Attendance', description: 'Attendance management endpoints'},
+        { name: 'Offices', description: 'Office management endpoints' }
       ]
     }
   }))
@@ -50,6 +52,7 @@ const app = new Elysia()
       .use(adminController)
       .use(employeesController)
       .use(attendanceController)
+      .use(officeController)
   )
   .listen(config.server.port)
 
