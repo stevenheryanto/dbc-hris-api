@@ -12,7 +12,10 @@ export class OfficeService {
     // qrCode?: string;
     status?: string;
   }) {
-    const tempQRCode = await QRCode.toDataURL(`OFFICE:${data.officeName}:${Date.now()}`);
+    const phone = process.env.CHATBOT_NO || ''
+    const message = encodeURIComponent('#' + data.officeName)
+    const strQrCode: string = `https://wa.me/${phone}?text=${message}`
+    const tempQRCode = await QRCode.toDataURL(strQrCode)
     const [office] = await db.insert(masterOffice).values({
       officeName: data.officeName,
       officeDescription: data.officeDescription,
