@@ -29,6 +29,7 @@ export const users = pgTable('users', {
 export const attendances = pgTable('attendances', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   userId: bigint('user_id', { mode: 'number' }).notNull().references(() => users.id), // Changed from employeeId to userId
+  officeId: bigint('office_id', { mode: 'number' }).references(() => masterOffice.id), // Office verified from QR code
   checkInDate: date('check_in_date').notNull().defaultNow(),
   checkInTime: timestamp('check_in_time').notNull(),
   checkInLat: decimal('check_in_lat', { precision: 10, scale: 8 }),
@@ -49,6 +50,7 @@ export const attendances = pgTable('attendances', {
   updatedAt: timestamp('updated_at').defaultNow()
 }, (table) => ({
   userIdx: index('idx_attendances_user').on(table.userId), // Changed from employeeIdx
+  officeIdx: index('idx_attendances_office').on(table.officeId),
   statusCreatedIdx: index('idx_attendances_status_created').on(table.status, table.createdAt),
   userDateIdx: index('idx_attendances_user_date').on(table.userId, table.checkInTime), // Changed from employeeDateIdx
   offlineIdx: index('idx_attendances_offline').on(table.isOfflineSubmission, table.offlineTimestamp)
@@ -105,6 +107,10 @@ export const attendancesRelations = relations(attendances, ({ one, many }) => ({
   user: one(users, {
     fields: [attendances.userId],
     references: [users.id]
+  }),
+  office: one(masterOffice, {
+    fields: [attendances.officeId],
+    references: [masterOffice.id]
   }),
   photos: many(attendancePhotos)
 }))

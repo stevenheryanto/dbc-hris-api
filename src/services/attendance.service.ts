@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { mkdir } from 'fs/promises'
 import { join } from 'path'
 import { config } from '../config'
+import { QRVerificationService } from './qr-verification.service'
 
 export class AttendanceService {
   static async createAttendance(data: {
@@ -16,6 +17,8 @@ export class AttendanceService {
     submissionType?: string
     isOfflineSubmission?: boolean
     offlineTimestamp?: Date
+    officeId?: number
+    qrVerified?: boolean
   }) {
     const checkInTime = data.isOfflineSubmission && data.offlineTimestamp 
       ? data.offlineTimestamp 
@@ -32,7 +35,8 @@ export class AttendanceService {
       submissionType: data.submissionType || 'check_in',
       isOfflineSubmission: data.isOfflineSubmission || false,
       offlineTimestamp: data.offlineTimestamp,
-      status: 'pending'
+      officeId: data.officeId,
+      status: data.qrVerified ? 'approved' : 'pending'
     }).returning()
 
     return attendance
@@ -60,6 +64,39 @@ export class AttendanceService {
       fileSize: file.size,
       mimeType: file.type
     })
+  }
+
+  /**
+   * Save photo with QR verification
+   */
+  static async savePhotoWithVerification(attendanceId: number, photoType: string, file: File) {
+    // Verify QR code in photo
+    const verification = await QRVerificationService.verifyAttendancePhoto(file)
+
+    // Save the photo regardless of verification result
+    await this.savePhoto(attendanceId, photoType, file)
+
+    // Update attendance with verification result
+    if (verification.isValid && verification.officeId) {
+      await db.update(attendances)
+        .set({
+          officeId: verification.officeId,
+          status: 'approved',
+          adminNotes: verification.message,
+          updatedAt: new Date()
+        })
+        .where(eq(attendances.id, attendanceId))
+    } else {
+      await db.update(attendances)
+        .set({
+          status: 'rejected',
+          adminNotes: verification.message,
+          updatedAt: new Date()
+        })
+        .where(eq(attendances.id, attendanceId))
+    }
+
+    return verification
   }
 
   static async getAttendanceWithDetails(attendanceId: number) {

@@ -22,8 +22,10 @@
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.29.5",
     "elysia": "^1.4.23",
+    "jsqr": "^1.4.0",
     "postgres": "^3.4.8",
     "qrcode": "^1.5.4",
+    "sharp": "^0.34.5",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

@@ -114,11 +114,14 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
         offlineTimestamp
       })
 
-      // Handle photo uploads
+      // Handle photo uploads with QR verification
       const photoPromises = []
+      let qrVerification = null
 
       if (checkInPhoto) {
-        photoPromises.push(AttendanceService.savePhoto(attendance.id, 'check_in', checkInPhoto))
+        // Use QR verification for check-in photo
+        const verification = await AttendanceService.savePhotoWithVerification(attendance.id, 'check_in', checkInPhoto)
+        qrVerification = verification
       }
 
       if (checkOutPhoto) {
@@ -132,12 +135,19 @@ export const mobileController = new Elysia({ prefix: '/mobile' })
 
       set.status = 201
       return {
-        message: isOfflineSubmission 
-          ? 'Offline attendance submitted successfully' 
-          : 'Attendance submitted successfully',
+        message: qrVerification?.isValid 
+          ? `Attendance verified successfully for ${qrVerification.officeName}` 
+          : isOfflineSubmission 
+            ? 'Offline attendance submitted successfully' 
+            : 'Attendance submitted successfully',
         attendance: completeAttendance,
         submissionType: submissionType || 'check_in',
-        isOfflineSubmission: isOfflineSubmission || false
+        isOfflineSubmission: isOfflineSubmission || false,
+        qrVerification: qrVerification ? {
+          isValid: qrVerification.isValid,
+          officeName: qrVerification.officeName,
+          message: qrVerification.message
+        } : undefined
       }
     } catch (error) {
       set.status = 500
