@@ -38,6 +38,7 @@ export class AuthService {
     username: string;
     email: string;
     name: string;
+    employeeId?: string;
     password: string;
     role?: string;
   }) {
@@ -49,10 +50,21 @@ export class AuthService {
     }
 
     // Check if email already exists
-    const existingEmail = await db.select().from(users).where(eq(users.email, userData.email)).limit(1)
-    
-    if (existingEmail.length > 0) {
-      throw new Error('Email already exists')
+    if (userData.email) {
+      const existingEmail = await db.select().from(users).where(eq(users.email, userData.email)).limit(1)
+      
+      if (existingEmail.length > 0) {
+        throw new Error('Email already exists')
+      }
+    }
+
+    // Check if employeeId already exists
+    if (userData.employeeId) {
+      const existingEmployeeId = await db.select().from(users).where(eq(users.employeeId, userData.employeeId)).limit(1)
+      
+      if (existingEmployeeId.length > 0) {
+        throw new Error('Employee ID already exists')
+      }
     }
 
     // Hash password
@@ -63,6 +75,7 @@ export class AuthService {
       username: userData.username,
       email: userData.email,
       name: userData.name,
+      employeeId: userData.employeeId,
       password: hashedPassword,
       role: userData.role || 'user',
       isActive: true,

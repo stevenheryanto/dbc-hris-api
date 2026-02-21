@@ -57,12 +57,13 @@ export const authController = new Elysia({ prefix: '/auth' })
   })
   .post('/register', async ({ body, jwt, set }) => {
     try {
-      const { name, email, password } = body
+      const { name, employeeId, email, phone, password } = body
 
       const user = await AuthService.createUser({
         username: email,
         email,
         name,
+        employeeId,
         password,
         role: 'user'
       })

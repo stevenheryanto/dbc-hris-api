@@ -8,9 +8,10 @@ export const LoginModel = t.Object({
 
 export const RegisterModel = t.Object({
   name: t.String({ minLength: 1, maxLength: 100 }),
+  employeeId: t.String({ minLength: 1, maxLength: 50 }),
   email: t.String({ format: 'email', maxLength: 100 }),
-  password: t.String({ minLength: 6, maxLength: 255 }),
-  confirmPassword: t.String({ minLength: 6, maxLength: 255 })
+  phone: t.Optional(t.String({ maxLength: 20 })),
+  password: t.String({ minLength: 6, maxLength: 255 })
 })
 
 export const LoginResponseModel = t.Object({
