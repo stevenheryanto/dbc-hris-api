@@ -9,6 +9,7 @@ import { employeesController } from './routes/employees'
 import { attendanceController } from './routes/attendance'
 import { officeController } from './routes/offices'
 import { qrTestController } from './routes/qr-test'
+import { testOfficeController } from './routes/test-office'
 import { config } from './config'
 import { initDatabase } from './db'
 
@@ -37,7 +38,8 @@ const app = new Elysia()
         { name: 'Employees', description: 'Employee management endpoints' },
         { name: 'Attendance', description: 'Attendance management endpoints'},
         { name: 'Offices', description: 'Office management endpoints' },
-        { name: 'QR Test', description: 'QR code testing endpoints' }
+        { name: 'QR Test', description: 'QR code testing endpoints' },
+        { name: 'Test Office', description: 'Office testing endpoints' }
       ]
     }
   }))
@@ -56,6 +58,7 @@ const app = new Elysia()
       .use(attendanceController)
       .use(officeController)
       .use(qrTestController)
+      .use(testOfficeController)
   )
   .listen(config.server.port)
 

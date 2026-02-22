@@ -97,6 +97,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
         type: body.type,
         source: body.source,
         country: body.country || 'ID',
+        officeId: body.officeId,
         isActive: body.isActive !== undefined ? body.isActive : true,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -115,6 +116,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
         type: users.type,
         source: users.source,
         country: users.country,
+        officeId: users.officeId,
         isActive: users.isActive,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt
@@ -142,6 +144,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       type: t.Optional(t.String()),
       source: t.Optional(t.String()),
       country: t.Optional(t.String()),
+      officeId: t.Optional(t.Number()),
       isActive: t.Optional(t.Boolean())
     }),
     detail: {
@@ -172,6 +175,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       if (body.type) updateData.type = body.type
       if (body.source) updateData.source = body.source
       if (body.country) updateData.country = body.country
+      if (body.officeId !== undefined) updateData.officeId = body.officeId
       if (body.isActive !== undefined) updateData.isActive = body.isActive
       
       const [updatedUser] = await db.update(users)
@@ -192,6 +196,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
           type: users.type,
           source: users.source,
           country: users.country,
+          officeId: users.officeId,
           isActive: users.isActive,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt
@@ -225,6 +230,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
       type: t.Optional(t.String()),
       source: t.Optional(t.String()),
       country: t.Optional(t.String()),
+      officeId: t.Optional(t.Number()),
       isActive: t.Optional(t.Boolean())
     }),
     detail: {
@@ -288,6 +294,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
             type: user.type,
             source: user.source || 'import',
             country: user.country || 'ID',
+            officeId: user.officeId,
             isActive: user.isActive !== undefined ? user.isActive : true,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -323,6 +330,7 @@ export const employeesController = new Elysia({ prefix: '/employees' })
         type: t.Optional(t.String()),
         source: t.Optional(t.String()),
         country: t.Optional(t.String()),
+        officeId: t.Optional(t.Number()),
         isActive: t.Optional(t.Boolean())
       }))
     }),
