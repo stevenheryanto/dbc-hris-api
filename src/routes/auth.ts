@@ -34,9 +34,10 @@ export const authController = new Elysia({ prefix: '/auth' })
         token,
         user: {
           id: user.id,
-          email: user.username,
-          name: user.username,
-          role: user.role
+          email: user.email || user.username,
+          name: user.name || user.username,
+          role: user.role,
+          phone: user.phone ?? null
         }
       }
     } catch (error) {
@@ -66,11 +67,11 @@ export const authController = new Elysia({ prefix: '/auth' })
         email,
         name,
         employeeId,
+        phone,
         password,
         role: 'user'
       })
 
-      // Generate JWT token
       const token = await jwt.sign({
         userId: user.id,
         username: user.username,
@@ -83,7 +84,8 @@ export const authController = new Elysia({ prefix: '/auth' })
           id: user.id,
           email: user.email || user.username,
           name: user.name || user.username,
-          role: user.role
+          role: user.role,
+          phone: user.phone ?? null
         }
       }
     } catch (error) {

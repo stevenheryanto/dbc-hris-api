@@ -20,7 +20,8 @@ export const LoginResponseModel = t.Object({
     id: t.Number(),
     email: t.String(),
     name: t.String(),
-    role: t.String()
+    role: t.String(),
+    phone: t.Union([t.String(), t.Null()])
   })
 })
 

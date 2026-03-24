@@ -19,6 +19,7 @@ export const users = pgTable('users', {
   source: varchar('source', { length: 191 }),
   officeId: bigint('office_id', { mode: 'number' }).references(() => masterOffice.id),
   country: varchar('country', { length: 3 }),
+  phone: varchar('phone', { length: 20 }),
   isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()

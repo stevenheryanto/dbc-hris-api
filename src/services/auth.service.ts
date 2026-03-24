@@ -4,7 +4,6 @@ import { eq } from 'drizzle-orm'
 
 export class AuthService {
   static async validateCredentials(email: string, password: string) {
-    // Find user
     const user = await db.select().from(users).where(eq(users.email, email)).limit(1)
     
     if (user.length === 0) {
@@ -13,16 +12,9 @@ export class AuthService {
 
     const foundUser = user[0]
 
-    // Verify password
     const isValidPassword = await bcrypt.compare(password, foundUser.password)
-    
-    if (!isValidPassword) {
-      throw new Error('Invalid credentials')
-    }
-
-    if (!foundUser.isActive) {
-      throw new Error('Account is inactive')
-    }
+    if (!isValidPassword) throw new Error('Invalid credentials')
+    if (!foundUser.isActive) throw new Error('Account is inactive')
 
     return {
       id: foundUser.id,
@@ -30,7 +22,8 @@ export class AuthService {
       email: foundUser.email,
       name: foundUser.name,
       role: foundUser.role || 'user',
-      employeeId: foundUser.employeeId
+      employeeId: foundUser.employeeId,
+      phone: foundUser.phone ?? null
     }
   }
 
@@ -39,6 +32,7 @@ export class AuthService {
     email: string;
     name: string;
     employeeId?: string;
+    phone?: string;
     password: string;
     role?: string;
   }) {
@@ -76,6 +70,7 @@ export class AuthService {
       email: userData.email,
       name: userData.name,
       employeeId: userData.employeeId,
+      phone: userData.phone,
       password: hashedPassword,
       role: userData.role || 'user',
       isActive: true,
@@ -88,7 +83,8 @@ export class AuthService {
       username: newUser[0].username,
       email: newUser[0].email,
       name: newUser[0].name,
-      role: newUser[0].role
+      role: newUser[0].role,
+      phone: newUser[0].phone ?? null
     }
   }
 
